@@ -56,8 +56,13 @@ pub struct Placeholder {
     // and replacing inline non-translatable content in each TU with a PH,
     // we already know the text that the PH is "holding the place" for.
     // If not present, then the value must be present in the map 
-    // `Message.ph_vals` that is keyed by this PH's `Placeholder.id`.
+    // `SingleMessage.ph_vals` that is keyed by this PH's `Placeholder.id`.
     default_text_val: Option<String>,
+}
+
+//#[derive(Hash, Eq)]
+pub struct PHValsMap {
+    map: HashMap<String, String>,
 }
 
 pub struct TextPart {
@@ -65,19 +70,115 @@ pub struct TextPart {
 }
 
 pub enum PatternPart {
-    TextPart(TextPart),
-    Placeholder(Placeholder),
+    TEXTPART(TextPart),
+    PLACEHOLDER(Placeholder),
 }
 
 pub struct MessagePattern {
-    text_parts: Vec<PatternPart>
+    parts: Vec<PatternPart>
 }
 
-pub struct Message {
-    // unique id for the Message, globally unique.
+pub struct SingleMessage {
+    // unique id for the SingleMessage, globally unique.
     id: String,
 
     locale: String,
     pattern: MessagePattern,
-    ph_vals: HashMap<String, String>,
+    ph_vals: PHValsMap, // type of value should prob be Any
+}
+
+pub struct MessageGroup {
+    id: String,
+    messages: HashMap<PHValsMap, SingleMessage>,
+}
+
+pub enum MessageType {
+    SINGLE(SingleMessage),
+    GROUP(MessageGroup)
+}
+
+pub struct TextUnit {
+    src: MessageType,
+    tgt: MessageType,
+}
+
+
+//
+// unit tests
+// 
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_construct_message() {
+        let msg1 = SingleMessage {
+            id: String::from("msg1"),
+            locale: String::from("en"),
+            pattern: MessagePattern{ 
+                parts: vec![
+                    PatternPart::TEXTPART(TextPart{ text: String::from("No items selected.") }),
+                ],
+            },
+            ph_vals: PHValsMap{ map: {
+                let mut m = HashMap::default();
+                m.insert(String::from("COUNT"), String::from("=0"));
+                m
+            }},
+        };
+        let msg2 = SingleMessage {
+            id: String::from("msg1"),
+            locale: String::from("en"),
+            pattern: MessagePattern{ 
+                parts: vec![
+                    PatternPart::PLACEHOLDER(Placeholder{
+                        id: String::from("COUNT"),
+                        ph_type: PlaceholderType::PLURAL,
+                        default_text_val: Option::None,
+                     }),
+                    PatternPart::TEXTPART(TextPart{ text: String::from(" item selected.") }),
+                ],
+            },
+            ph_vals: PHValsMap{ map: {
+                let mut m = HashMap::default();
+                m.insert(String::from("COUNT"), String::from("ONE"));
+                m
+            }},
+        };
+        let msg3 = SingleMessage {
+            id: String::from("msg2"),
+            locale: String::from("en"),
+            pattern: MessagePattern{ 
+                parts: vec![
+                    PatternPart::PLACEHOLDER(Placeholder{
+                        id: String::from("COUNT"),
+                        ph_type: PlaceholderType::PLURAL,
+                        default_text_val: Option::None,
+                     }),
+                    PatternPart::TEXTPART(TextPart{ text: String::from(" items selected.") }),
+                ],
+            },
+            ph_vals: PHValsMap{ map: {
+                let mut m = HashMap::default();
+                m.insert(String::from("COUNT"), String::from("OTHER"));
+                m
+            }},
+        };
+
+        let msgs = vec![msg1, msg2, msg3];
+
+        // let msg_ids: Vec<String> =
+        //     msgs.iter().map(|&m| m.id.clone()).collect();
+
+        // let msg_ph_vals_vec: Vec<PHValsMap> = 
+        //     msgs.iter().map(|&m| m.ph_vals.clone()).collect();
+
+        // let mut msgs_grp_map: HashMap<PHValsMap, SingleMessage> = HashMap::new();
+        // for msg in msgs {
+        //     let ph_vals = &msg.ph_vals.clone();
+        //     msgs_grp_map.insert(ph_vals, msg);
+        // }
+        
+    }
 }
