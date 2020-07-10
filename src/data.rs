@@ -1,5 +1,10 @@
 use std::collections::HashMap;
 
+pub struct PHTypeAttributes {
+    enumerated: bool,
+}
+
+#[derive(Hash, Eq, PartialEq, Debug)]
 pub enum PlaceholderType {
     UNKNOWN, // from Google protobuf style guide, but is this necessary? I think not
     GENDER,
@@ -8,14 +13,27 @@ pub enum PlaceholderType {
                   // all the future needs we can't predict.
 }
 
-pub struct Placeholder {
-    // unique id for the PH.
-    // Conceptually, this is globally unique. But it is up to user,
-    // at what scope this is guaranteed to be unique, but obviously
-    // should be unique at least at the message level.
-    id: String,
+// return a map with pre-defined meta-information about common PlaceholderTypes.
+// I think this is useful, esp for an l10n/TMS system.  But I haven't decided
+// if/how it relates strictly to message formatting itself, so unil then,
+// this will actually be unused.  If this is useful, then the user can extend
+//  this map to support whatever custom PH types that the user chooses to use
+// in `Placeholder.OTHER(String)`.
+pub fn ph_type_attrs_map() -> HashMap<PlaceholderType, PHTypeAttributes> {
+    let mut m = HashMap::new();
+    m.insert(
+        PlaceholderType::GENDER,
+        PHTypeAttributes{ enumerated: true }
+    );
+    m.insert(
+        PlaceholderType::PLURAL,
+        PHTypeAttributes{ enumerated: true }
+    );
+    m
+}
 
-    // name for PH, used for val interpolation in the formatted string. 
+pub struct Placeholder {
+    // id & name for PH, used for val interpolation in the formatted string.
     // Let the user decide whether this should be unique or shared
     // across multiple PH instances within the same message.
     // Ex: if PH represents a product name, then maybe you want to
@@ -26,7 +44,7 @@ pub struct Placeholder {
     // SPAN2, ... to indicate that the contents may very well differ.
     // and <b> and <i> tags may just all be B and I because they are
     // semantically same, and therefore interchangeable.
-    name: String,
+    id: String,
 
     // type of the PH.
     // See notes for PlaceholderType for nuances of PH types.
@@ -38,7 +56,7 @@ pub struct Placeholder {
     // and replacing inline non-translatable content in each TU with a PH,
     // we already know the text that the PH is "holding the place" for.
     // If not present, then the value must be present in the map 
-    // `Message.ph_vals` that is keyed by this PH's `Placeholder.name`.
+    // `Message.ph_vals` that is keyed by this PH's `Placeholder.id`.
     default_text_val: Option<String>,
 }
 
