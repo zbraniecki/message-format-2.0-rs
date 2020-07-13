@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 
 pub struct PHTypeAttributes {
     enumerated: bool,
@@ -60,6 +61,12 @@ pub struct Placeholder {
     default_text_val: Option<String>,
 }
 
+impl fmt::Display for Placeholder {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format!("{{{}}}", self.id))
+    }
+}
+
 //#[derive(Hash, Eq)]
 pub struct PHValsMap {
     map: HashMap<String, String>,
@@ -69,13 +76,41 @@ pub struct TextPart {
     text: String,
 }
 
+impl fmt::Display for TextPart {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format!("{}", self.text))
+    }
+}
+
 pub enum PatternPart {
     TEXTPART(TextPart),
     PLACEHOLDER(Placeholder),
 }
 
+impl fmt::Display for PatternPart {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let result = match &self {
+            PatternPart::TEXTPART(text_part) => {
+                write!(f, "{}", format!("{}", text_part))
+            }
+            PatternPart::PLACEHOLDER(placeholder) => {
+                write!(f, "{}", format!("{}", placeholder))
+            }
+        };
+        result
+    }
+}
+
 pub struct MessagePattern {
     parts: Vec<PatternPart>
+}
+
+impl fmt::Display for MessagePattern {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let part_strs: Vec<String> = self.parts.iter().map(|part| format!("{}", part)).collect();
+        let pattern_str = part_strs.join("");
+        write!(f, "{}", format!("[{}]", pattern_str))
+    }
 }
 
 pub struct SingleMessage {
@@ -85,6 +120,12 @@ pub struct SingleMessage {
     locale: String,
     pattern: MessagePattern,
     ph_vals: PHValsMap, // type of value should prob be Any
+}
+
+impl fmt::Display for SingleMessage {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format!("{}", self.pattern))
+    }
 }
 
 pub struct MessageGroup {
@@ -167,6 +208,10 @@ mod tests {
         };
 
         let msgs = vec![msg1, msg2, msg3];
+
+        println!("msg1: {}", &msgs[0]);
+        println!("msg2: {}", &msgs[1]);
+        println!("msg3: {}", &msgs[2]);
 
         // let msg_ids: Vec<String> =
         //     msgs.iter().map(|&m| m.id.clone()).collect();
