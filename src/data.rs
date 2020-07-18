@@ -8,12 +8,12 @@ use std::hash::{Hash, Hasher};
 //
 
 // This trait represents the action of formatting a struct 
-// (esp `MessageBase`) by using and interpolating known values for placeholders.
+// by using and interpolating known values for placeholders.
 // Such known values might only be combined with the message templates later
 // (ex: "runtime") than when the message template was created
 // (ex: "authoring time").
-trait MsgFmtDisplay {
-    fn fmt_str(&self) -> String;
+trait FmtMsg {
+    fn fmt_str(&self, act_ph_vals: &PHValsMap) -> String;
 }
 
 //
@@ -93,6 +93,12 @@ impl fmt::Display for Placeholder {
 #[derive(Clone, Eq, Debug)] // impl for Hash and PartialEq below
 pub struct PHValsMap {
     map: HashMap<String, String>, // type of value should prob be Any
+}
+
+impl PHValsMap {
+    fn new() -> PHValsMap {
+        PHValsMap { map: HashMap::default() }
+    }
 }
 
 impl std::hash::Hash for PHValsMap {
@@ -180,8 +186,8 @@ pub struct MessageBase {
     act_ph_vals: PHValsMap,
 }
 
-impl MsgFmtDisplay for MessageBase {
-    fn fmt_str(&self) -> String {
+impl FmtMsg for MessageBase {
+    fn fmt_str(&self, act_ph_vals: &PHValsMap) -> String {
         let mut result = String::new();
         for part in &self.pattern.parts {
             match part {
@@ -190,7 +196,7 @@ impl MsgFmtDisplay for MessageBase {
                 },
                 PatternPart::PLACEHOLDER(placeholder) => {
                     let ph_id = &placeholder.id;
-                    let ph_val_opt = &self.act_ph_vals.map.get(ph_id);
+                    let ph_val_opt = act_ph_vals.map.get(ph_id);
                     match ph_val_opt {
                         Some(ph_val) => {
                             result.push_str(ph_val);
@@ -201,7 +207,7 @@ impl MsgFmtDisplay for MessageBase {
                                     result.push_str(&default_text);
                                 },
                                 None => {
-                                    result.push_str("");
+                                    result.push_str(&format!("{}", placeholder));
                                 }
                             }
                         }
@@ -229,6 +235,17 @@ pub struct SingleMessage {
 impl fmt::Display for SingleMessage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", format!("{}", self.msg_base))
+    }
+}
+
+impl FmtMsg for SingleMessage {
+    fn fmt_str(&self, act_ph_vals: &PHValsMap) -> String {
+        let msg_base_clone = self.msg_base.clone();
+        let updated_msg_base_clone = MessageBase {
+            act_ph_vals: act_ph_vals.clone(),
+            ..msg_base_clone
+        };
+        updated_msg_base_clone.fmt_str(act_ph_vals)
     }
 }
 
@@ -343,7 +360,7 @@ mod tests {
                     PatternPart::TEXTPART(TextPart{ text: String::from("No items selected.") }),
                 ],
             },
-            act_ph_vals: PHValsMap { map: HashMap::default() },
+            act_ph_vals: PHValsMap::new(),
         };
         let msg_base2 = MessageBase {
             pattern: MessagePattern{ 
@@ -356,7 +373,7 @@ mod tests {
                     PatternPart::TEXTPART(TextPart{ text: String::from(" item selected.") }),
                 ],
             },
-            act_ph_vals: PHValsMap { map: HashMap::default() },
+            act_ph_vals: PHValsMap::new(),
         };
         let msg_base3 = MessageBase {
             pattern: MessagePattern{ 
@@ -369,7 +386,7 @@ mod tests {
                     PatternPart::TEXTPART(TextPart{ text: String::from(" items selected.") }),
                 ],
             },
-            act_ph_vals: PHValsMap { map: HashMap::default() },
+            act_ph_vals: PHValsMap::new(),
         };
 
         // build `SingleMessage`s and print
@@ -425,7 +442,7 @@ mod tests {
     }
 
     #[test]
-    fn msg_fmt_display_message_base() {
+    fn fmt_str_message_base() {
         let select_ph_vals2 = PHValsMap{ map: {
             let mut m = HashMap::default();
             m.insert(String::from("COUNT"), String::from("ONE"));
@@ -448,11 +465,35 @@ mod tests {
                     PatternPart::TEXTPART(TextPart{ text: String::from(" item selected.") }),
                 ],
             },
-            act_ph_vals: interpolate_ph_vals2,
+            act_ph_vals: PHValsMap::new(),
+            // act_ph_vals: interpolate_ph_vals2.clone(),
         };
 
         assert_eq!("[{COUNT} item selected.]", format!("{}", msg_base2));
-        assert_eq!("1 item selected.", msg_base2.fmt_str());
+        assert_eq!("1 item selected.", msg_base2.fmt_str(&interpolate_ph_vals2));
+    }
+
+    #[test]
+    fn fmt_str_single_message() {
+        let select_ph_vals2 = PHValsMap{ map: {
+            let mut m = HashMap::default();
+            m.insert(String::from("COUNT"), String::from("ONE"));
+            m
+        }};
+
+        let msg_base2 = MessageBase {
+            pattern: MessagePattern{ 
+                parts: vec![
+                    PatternPart::PLACEHOLDER(Placeholder{
+                        id: String::from("COUNT"),
+                        ph_type: PlaceholderType::PLURAL,
+                        default_text_val: Option::None,
+                     }),
+                    PatternPart::TEXTPART(TextPart{ text: String::from(" item selected.") }),
+                ],
+            },
+            act_ph_vals: PHValsMap { map: HashMap::default() },
+        };
 
         let msg2 = SingleMessage {
             id: String::from("msg2"),
@@ -460,12 +501,14 @@ mod tests {
             msg_base: msg_base2.clone(),
         };
 
-        let msg_grp_key_2 = select_ph_vals2.clone();
-        let mut messages: HashMap<PHValsMap, MessageBase> = HashMap::new();
-        messages.insert(msg_grp_key_2, msg_base2.clone());
-        let msg_grp = MessageGroup {
-            id: String::from("msg_grp"),
-            messages,
-        };
+        // create a clone of the selection map and substitute actual/runtime
+        // vals
+        let mut interpolate_ph_vals2: PHValsMap = select_ph_vals2.clone();
+        interpolate_ph_vals2.map.insert(String::from("COUNT"), String::from("1"));
+        let empty_ph_vals = PHValsMap::new();
+
+        assert_eq!("{COUNT} item selected.", msg_base2.fmt_str(&empty_ph_vals));
+        assert_eq!("1 item selected.", msg_base2.fmt_str(&interpolate_ph_vals2));
+        assert_eq!("1 item selected.", msg2.fmt_str(&interpolate_ph_vals2));
     }
 }
