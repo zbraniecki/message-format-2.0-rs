@@ -1,5 +1,8 @@
 use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
 use std::fmt;
+use std::hash::{Hash, Hasher};
+
 
 pub struct PHTypeAttributes {
     enumerated: bool,
@@ -67,9 +70,28 @@ impl fmt::Display for Placeholder {
     }
 }
 
-//#[derive(Hash, Eq)]
+#[derive(Eq, Debug)] // Hash and PartialEq below
 pub struct PHValsMap {
     map: HashMap<String, String>,
+}
+
+impl std::hash::Hash for PHValsMap {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let mut hasher = DefaultHasher::new();
+
+        for (key, val) in &self.map {
+            key.hash(&mut hasher);
+            val.hash(&mut hasher);
+        }
+
+        hasher.finish();
+    }
+}
+
+impl PartialEq for PHValsMap {
+    fn eq(&self, other: &PHValsMap) -> bool {
+        &self.map == &other.map
+    }
 }
 
 pub struct TextPart {
@@ -151,6 +173,45 @@ pub struct TextUnit {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_ph_vals_map_hasheq() {
+        let mut map1 = HashMap::new();
+        &map1.insert(String::from("COUNT"), String::from("5"));
+        let ph_vals1 =
+         PHValsMap {
+             map: map1,
+            };
+
+        let mut map2 = HashMap::new();
+        &map2.insert(String::from("COUNT"), String::from("14"));
+        let ph_vals2 =
+         PHValsMap {
+             map: map2,
+            };
+
+        let mut map3 = HashMap::new();
+        &map3.insert(String::from("COUNT"), String::from("5"));
+        let ph_vals3 =
+            PHValsMap {
+                map: map3,
+            };
+
+        assert_eq!(&ph_vals1, &ph_vals3);
+        assert_ne!(&ph_vals1, &ph_vals2);
+        assert_ne!(&ph_vals2, &ph_vals3);
+
+        let mut map4 = HashMap::new();
+        &map4.insert(String::from("count"), String::from("5"));
+        &map4.insert(String::from("COUNT"), String::from("5"));
+        let ph_vals4 =
+            PHValsMap {
+                map: map4,
+            };
+
+        assert_ne!(&ph_vals1, &ph_vals4);
+        assert_ne!(&ph_vals3, &ph_vals4);
+    }
 
     #[test]
     fn test_construct_message() {
