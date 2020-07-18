@@ -70,7 +70,10 @@ impl fmt::Display for Placeholder {
     }
 }
 
-#[derive(Eq, Debug)] // Hash and PartialEq below
+// PHValsMap indicates how to uniquely select a message,
+// while still being extensible to include runtime values
+// during the formatting phase.
+#[derive(Eq, Debug)] // impl for Hash and PartialEq below
 pub struct PHValsMap {
     map: HashMap<String, String>,
 }
@@ -215,6 +218,23 @@ mod tests {
 
     #[test]
     fn test_construct_message() {
+        // `PHValsMap`s for selecting specific messages.
+        let ph_vals1 = PHValsMap{ map: {
+            let mut m = HashMap::default();
+            m.insert(String::from("COUNT"), String::from("=0"));
+            m
+        }};
+        let ph_vals2 = PHValsMap{ map: {
+            let mut m = HashMap::default();
+            m.insert(String::from("COUNT"), String::from("ONE"));
+            m
+        }};
+        let ph_vals3 = PHValsMap{ map: {
+            let mut m = HashMap::default();
+            m.insert(String::from("COUNT"), String::from("OTHER"));
+            m
+        }};
+
         let msg1 = SingleMessage {
             id: String::from("msg1"),
             locale: String::from("en"),
@@ -223,11 +243,7 @@ mod tests {
                     PatternPart::TEXTPART(TextPart{ text: String::from("No items selected.") }),
                 ],
             },
-            ph_vals: PHValsMap{ map: {
-                let mut m = HashMap::default();
-                m.insert(String::from("COUNT"), String::from("=0"));
-                m
-            }},
+            ph_vals: ph_vals1,
         };
         let msg2 = SingleMessage {
             id: String::from("msg1"),
@@ -242,11 +258,7 @@ mod tests {
                     PatternPart::TEXTPART(TextPart{ text: String::from(" item selected.") }),
                 ],
             },
-            ph_vals: PHValsMap{ map: {
-                let mut m = HashMap::default();
-                m.insert(String::from("COUNT"), String::from("ONE"));
-                m
-            }},
+            ph_vals: ph_vals2,
         };
         let msg3 = SingleMessage {
             id: String::from("msg2"),
@@ -261,14 +273,11 @@ mod tests {
                     PatternPart::TEXTPART(TextPart{ text: String::from(" items selected.") }),
                 ],
             },
-            ph_vals: PHValsMap{ map: {
-                let mut m = HashMap::default();
-                m.insert(String::from("COUNT"), String::from("OTHER"));
-                m
-            }},
+            ph_vals: ph_vals3,
         };
 
         let msgs = vec![msg1, msg2, msg3];
+
 
         println!("msg1: {}", &msgs[0]);
         println!("msg2: {}", &msgs[1]);
