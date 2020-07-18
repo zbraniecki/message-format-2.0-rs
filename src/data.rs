@@ -3,6 +3,22 @@ use std::collections::hash_map::DefaultHasher;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
+//
+// traits
+//
+
+// This trait represents the action of formatting a struct 
+// (esp `MessageBase`) by using and interpolating known values for placeholders.
+// Such known values might only be combined with the message templates later
+// (ex: "runtime") than when the message template was created
+// (ex: "authoring time").
+trait MsgFmtDisplay {
+    fn fmt_str(&self) -> String;
+}
+
+//
+// structs
+//
 
 pub struct PHTypeAttributes {
     enumerated: bool,
@@ -76,7 +92,7 @@ impl fmt::Display for Placeholder {
 // during the formatting phase.
 #[derive(Clone, Eq, Debug)] // impl for Hash and PartialEq below
 pub struct PHValsMap {
-    map: HashMap<String, String>,
+    map: HashMap<String, String>, // type of value should prob be Any
 }
 
 impl std::hash::Hash for PHValsMap {
@@ -159,7 +175,42 @@ impl fmt::Display for MessagePattern {
 #[derive(Clone)]
 pub struct MessageBase {
     pattern: MessagePattern,
-    ph_vals: PHValsMap, // type of value should prob be Any
+    // The values stored in `ph_vals` should be the actual vals known for the
+    // placeholders used in `pattern`.
+    ph_vals: PHValsMap,
+}
+
+impl MsgFmtDisplay for MessageBase {
+    fn fmt_str(&self) -> String {
+        let mut result = String::new();
+        for part in &self.pattern.parts {
+            match part {
+                PatternPart::TEXTPART(text_part) => {
+                    result.push_str(&format!("{}", text_part));
+                },
+                PatternPart::PLACEHOLDER(placeholder) => {
+                    let ph_id = &placeholder.id;
+                    let ph_val_opt = &self.ph_vals.map.get(ph_id);
+                    match ph_val_opt {
+                        Some(ph_val) => {
+                            result.push_str(ph_val);
+                        },
+                        None => {
+                            match &placeholder.default_text_val {
+                                Some(default_text) => {
+                                    result.push_str(&default_text);
+                                },
+                                None => {
+                                    result.push_str("");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        result
+    }
 }
 
 impl fmt::Display for MessageBase {
@@ -339,12 +390,9 @@ mod tests {
             msg_base: msg_base3.clone(),
         };
 
-        // msg1: [No items selected.]
-        println!("msg1: {}", msg1);
-        // msg2: [{COUNT} item selected.]
-        println!("msg2: {}", msg2);
-        // msg3: [{COUNT} items selected.]
-        println!("msg3: {}", msg3);
+        assert_eq!("[No items selected.]", format!("{}", msg1));
+        assert_eq!("[{COUNT} item selected.]", format!("{}", msg2));
+        assert_eq!("[{COUNT} items selected.]", format!("{}", msg3));
 
         // Build up `GroupMessage` and print
 
@@ -362,7 +410,9 @@ mod tests {
             messages,
         };
 
-        // Output:
+        // Output*
+        //
+        // (*hashmap keys are not ordered, so output may vary)
         //
         // msg_grp =
         // msg_grp: {
@@ -370,8 +420,52 @@ mod tests {
         //     {COUNT:=0}: [No items selected.]
         //     {COUNT:ONE}: [{COUNT} item selected.]
         //   }
-
         println!("msg_grp =");
         println!("{}", msg_grp);
+    }
+
+    #[test]
+    fn msg_fmt_display_message_base() {
+        let select_ph_vals2 = PHValsMap{ map: {
+            let mut m = HashMap::default();
+            m.insert(String::from("COUNT"), String::from("ONE"));
+            m
+        }};
+
+        // create a clone of the selection map and substitute actual/runtime
+        // vals
+        let mut interpolate_ph_vals2: PHValsMap = select_ph_vals2.clone();
+        interpolate_ph_vals2.map.insert(String::from("COUNT"), String::from("1"));
+
+        let msg_base2 = MessageBase {
+            pattern: MessagePattern{ 
+                parts: vec![
+                    PatternPart::PLACEHOLDER(Placeholder{
+                        id: String::from("COUNT"),
+                        ph_type: PlaceholderType::PLURAL,
+                        default_text_val: Option::None,
+                     }),
+                    PatternPart::TEXTPART(TextPart{ text: String::from(" item selected.") }),
+                ],
+            },
+            ph_vals: interpolate_ph_vals2,
+        };
+
+        assert_eq!("[{COUNT} item selected.]", format!("{}", msg_base2));
+        assert_eq!("1 item selected.", msg_base2.fmt_str());
+
+        let msg2 = SingleMessage {
+            id: String::from("msg2"),
+            locale: String::from("en"),
+            msg_base: msg_base2.clone(),
+        };
+
+        let msg_grp_key_2 = select_ph_vals2.clone();
+        let mut messages: HashMap<PHValsMap, MessageBase> = HashMap::new();
+        messages.insert(msg_grp_key_2, msg_base2.clone());
+        let msg_grp = MessageGroup {
+            id: String::from("msg_grp"),
+            messages,
+        };
     }
 }
