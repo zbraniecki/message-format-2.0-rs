@@ -8,7 +8,7 @@ pub struct PHTypeAttributes {
     enumerated: bool,
 }
 
-#[derive(Hash, Eq, PartialEq, Debug)]
+#[derive(Clone, Hash, Eq, PartialEq, Debug)]
 pub enum PlaceholderType {
     UNKNOWN, // from Google protobuf style guide, but is this necessary? I think not
     GENDER,
@@ -36,6 +36,7 @@ pub fn ph_type_attrs_map() -> HashMap<PlaceholderType, PHTypeAttributes> {
     m
 }
 
+#[derive(Clone)]
 pub struct Placeholder {
     // id & name for PH, used for val interpolation in the formatted string.
     // Let the user decide whether this should be unique or shared
@@ -111,6 +112,7 @@ impl fmt::Display for PHValsMap {
     }
 }
 
+#[derive(Clone)]
 pub struct TextPart {
     text: String,
 }
@@ -121,6 +123,7 @@ impl fmt::Display for TextPart {
     }
 }
 
+#[derive(Clone)]
 pub enum PatternPart {
     TEXTPART(TextPart),
     PLACEHOLDER(Placeholder),
@@ -140,6 +143,7 @@ impl fmt::Display for PatternPart {
     }
 }
 
+#[derive(Clone)]
 pub struct MessagePattern {
     parts: Vec<PatternPart>
 }
@@ -152,24 +156,34 @@ impl fmt::Display for MessagePattern {
     }
 }
 
-pub struct SingleMessage {
-    // unique id for the SingleMessage, globally unique.
-    id: String,
-
-    locale: String,
+#[derive(Clone)]
+pub struct MessageBase {
     pattern: MessagePattern,
     ph_vals: PHValsMap, // type of value should prob be Any
 }
 
-impl fmt::Display for SingleMessage {
+impl fmt::Display for MessageBase {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", format!("{}", self.pattern))
     }
 }
 
+pub struct SingleMessage {
+    // unique id for the SingleMessage, globally unique.
+    id: String,
+    locale: String,
+    msg_base: MessageBase,
+}
+
+impl fmt::Display for SingleMessage {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format!("{}", self.msg_base))
+    }
+}
+
 pub struct MessageGroup {
     id: String,
-    messages: HashMap<PHValsMap, SingleMessage>,
+    messages: HashMap<PHValsMap, MessageBase>,
 }
 
 impl fmt::Display for MessageGroup {
@@ -270,9 +284,8 @@ mod tests {
             m
         }};
 
-        let msg1 = SingleMessage {
-            id: String::from("msg1"),
-            locale: String::from("en"),
+        // `MessageBase`s to be (re-)used in `SingleMessage`s and `MessageGroup`s.
+        let msg_base1 = MessageBase {
             pattern: MessagePattern{ 
                 parts: vec![
                     PatternPart::TEXTPART(TextPart{ text: String::from("No items selected.") }),
@@ -280,9 +293,7 @@ mod tests {
             },
             ph_vals: ph_vals1.clone(),
         };
-        let msg2 = SingleMessage {
-            id: String::from("msg2"),
-            locale: String::from("en"),
+        let msg_base2 = MessageBase {
             pattern: MessagePattern{ 
                 parts: vec![
                     PatternPart::PLACEHOLDER(Placeholder{
@@ -295,9 +306,7 @@ mod tests {
             },
             ph_vals: ph_vals2.clone(),
         };
-        let msg3 = SingleMessage {
-            id: String::from("msg3"),
-            locale: String::from("en"),
+        let msg_base3 = MessageBase {
             pattern: MessagePattern{ 
                 parts: vec![
                     PatternPart::PLACEHOLDER(Placeholder{
@@ -311,17 +320,37 @@ mod tests {
             ph_vals: ph_vals3.clone(),
         };
 
+        // single messages
+        let msg1 = SingleMessage {
+            id: String::from("msg1"),
+            locale: String::from("en"),
+            msg_base: msg_base1.clone(),
+        };
+        let msg2 = SingleMessage {
+            id: String::from("msg2"),
+            locale: String::from("en"),
+            msg_base: msg_base2.clone(),
+        };
+        let msg3 = SingleMessage {
+            id: String::from("msg3"),
+            locale: String::from("en"),
+            msg_base: msg_base3.clone(),
+        };
+
         let msg_grp_key_1 = ph_vals1.clone();
         let msg_grp_key_2 = ph_vals2.clone();
         let msg_grp_key_3 = ph_vals3.clone();
 
-        let mut messages: HashMap<PHValsMap, SingleMessage> = HashMap::new();
-        messages.insert(msg_grp_key_1, msg1);
-        messages.insert(msg_grp_key_2, msg2);
-        messages.insert(msg_grp_key_3, msg3);
+        let mut messages: HashMap<PHValsMap, MessageBase> = HashMap::new();
+        messages.insert(msg_grp_key_1, msg_base1.clone());
+        messages.insert(msg_grp_key_2, msg_base2.clone());
+        messages.insert(msg_grp_key_3, msg_base3.clone());
 
+        // msg1: [No items selected.]
         println!("msg1: {}", &messages.get(&ph_vals1).unwrap());
+        // msg2: [{COUNT} item selected.]
         println!("msg2: {}", &messages.get(&ph_vals2).unwrap());
+        // msg3: [{COUNT} items selected.]
         println!("msg3: {}", &messages.get(&ph_vals3).unwrap());
 
         let msg_grp = MessageGroup {
@@ -329,6 +358,14 @@ mod tests {
             messages,
         };
 
+        // Output:
+        //
+        // msg_grp =
+        // msg_grp: {
+        //     {COUNT:OTHER}: [{COUNT} items selected.]
+        //     {COUNT:=0}: [No items selected.]
+        //     {COUNT:ONE}: [{COUNT} item selected.]
+        //   }
         println!("msg_grp =");
         println!("{}", msg_grp);
     }
