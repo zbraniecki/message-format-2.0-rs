@@ -177,7 +177,7 @@ pub struct MessageBase {
     pattern: MessagePattern,
     // The values stored in `ph_vals` should be the actual vals known for the
     // placeholders used in `pattern`.
-    ph_vals: PHValsMap,
+    act_ph_vals: PHValsMap,
 }
 
 impl MsgFmtDisplay for MessageBase {
@@ -190,7 +190,7 @@ impl MsgFmtDisplay for MessageBase {
                 },
                 PatternPart::PLACEHOLDER(placeholder) => {
                     let ph_id = &placeholder.id;
-                    let ph_val_opt = &self.ph_vals.map.get(ph_id);
+                    let ph_val_opt = &self.act_ph_vals.map.get(ph_id);
                     match ph_val_opt {
                         Some(ph_val) => {
                             result.push_str(ph_val);
@@ -343,7 +343,7 @@ mod tests {
                     PatternPart::TEXTPART(TextPart{ text: String::from("No items selected.") }),
                 ],
             },
-            ph_vals: ph_vals1.clone(),
+            act_ph_vals: PHValsMap { map: HashMap::default() },
         };
         let msg_base2 = MessageBase {
             pattern: MessagePattern{ 
@@ -356,7 +356,7 @@ mod tests {
                     PatternPart::TEXTPART(TextPart{ text: String::from(" item selected.") }),
                 ],
             },
-            ph_vals: ph_vals2.clone(),
+            act_ph_vals: PHValsMap { map: HashMap::default() },
         };
         let msg_base3 = MessageBase {
             pattern: MessagePattern{ 
@@ -369,7 +369,7 @@ mod tests {
                     PatternPart::TEXTPART(TextPart{ text: String::from(" items selected.") }),
                 ],
             },
-            ph_vals: ph_vals3.clone(),
+            act_ph_vals: PHValsMap { map: HashMap::default() },
         };
 
         // build `SingleMessage`s and print
@@ -448,7 +448,7 @@ mod tests {
                     PatternPart::TEXTPART(TextPart{ text: String::from(" item selected.") }),
                 ],
             },
-            ph_vals: interpolate_ph_vals2,
+            act_ph_vals: interpolate_ph_vals2,
         };
 
         assert_eq!("[{COUNT} item selected.]", format!("{}", msg_base2));
