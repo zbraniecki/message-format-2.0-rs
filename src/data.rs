@@ -267,7 +267,8 @@ mod tests {
 
     #[test]
     fn test_construct_message() {
-        // `PHValsMap`s for selecting specific messages.
+        // create `PHValsMap`s for selecting specific messages and holding
+        // onto runtime PH values to interpolate during the formatting phase.
         let ph_vals1 = PHValsMap{ map: {
             let mut m = HashMap::default();
             m.insert(String::from("COUNT"), String::from("=0"));
@@ -284,7 +285,7 @@ mod tests {
             m
         }};
 
-        // `MessageBase`s to be (re-)used in `SingleMessage`s and `MessageGroup`s.
+        // create `MessageBase`s to be (re-)used in `SingleMessage`s and `MessageGroup`s.
         let msg_base1 = MessageBase {
             pattern: MessagePattern{ 
                 parts: vec![
@@ -320,7 +321,8 @@ mod tests {
             ph_vals: ph_vals3.clone(),
         };
 
-        // single messages
+        // build `SingleMessage`s and print
+
         let msg1 = SingleMessage {
             id: String::from("msg1"),
             locale: String::from("en"),
@@ -337,6 +339,15 @@ mod tests {
             msg_base: msg_base3.clone(),
         };
 
+        // msg1: [No items selected.]
+        println!("msg1: {}", msg1);
+        // msg2: [{COUNT} item selected.]
+        println!("msg2: {}", msg2);
+        // msg3: [{COUNT} items selected.]
+        println!("msg3: {}", msg3);
+
+        // Build up `GroupMessage` and print
+
         let msg_grp_key_1 = ph_vals1.clone();
         let msg_grp_key_2 = ph_vals2.clone();
         let msg_grp_key_3 = ph_vals3.clone();
@@ -345,13 +356,6 @@ mod tests {
         messages.insert(msg_grp_key_1, msg_base1.clone());
         messages.insert(msg_grp_key_2, msg_base2.clone());
         messages.insert(msg_grp_key_3, msg_base3.clone());
-
-        // msg1: [No items selected.]
-        println!("msg1: {}", &messages.get(&ph_vals1).unwrap());
-        // msg2: [{COUNT} item selected.]
-        println!("msg2: {}", &messages.get(&ph_vals2).unwrap());
-        // msg3: [{COUNT} items selected.]
-        println!("msg3: {}", &messages.get(&ph_vals3).unwrap());
 
         let msg_grp = MessageGroup {
             id: String::from("msg_grp"),
@@ -366,6 +370,7 @@ mod tests {
         //     {COUNT:=0}: [No items selected.]
         //     {COUNT:ONE}: [{COUNT} item selected.]
         //   }
+
         println!("msg_grp =");
         println!("{}", msg_grp);
     }
