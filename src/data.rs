@@ -73,7 +73,7 @@ impl fmt::Display for Placeholder {
 // PHValsMap indicates how to uniquely select a message,
 // while still being extensible to include runtime values
 // during the formatting phase.
-#[derive(Eq, Debug)] // impl for Hash and PartialEq below
+#[derive(Clone, Eq, Debug)] // impl for Hash and PartialEq below
 pub struct PHValsMap {
     map: HashMap<String, String>,
 }
@@ -94,6 +94,20 @@ impl std::hash::Hash for PHValsMap {
 impl PartialEq for PHValsMap {
     fn eq(&self, other: &PHValsMap) -> bool {
         &self.map == &other.map
+    }
+}
+
+impl fmt::Display for PHValsMap {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let entries = &self.map.iter();
+        let entry_strs: &Vec<String> =
+            (&self.map
+                .iter()
+                .map(|(k,v)| format!("{}:{}", k.clone(), v.clone()))
+            .collect::<Vec<String>>());
+        let entry_list_str = entry_strs.join(", ");
+        let result_str = format!("{{{}}}", entry_list_str);
+        write!(f, "{}", format!("{}", result_str))
     }
 }
 
@@ -156,6 +170,27 @@ impl fmt::Display for SingleMessage {
 pub struct MessageGroup {
     id: String,
     messages: HashMap<PHValsMap, SingleMessage>,
+}
+
+impl fmt::Display for MessageGroup {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let line1 = format!("{}: {{", &self.id);
+        let last_line = format!("}}");
+        let entries = &self.messages.iter();
+        let mut entry_strs: &Vec<String> =
+            (&self.messages
+                .iter()
+                .map(|(k,v)| format!("  {}: {}", k.clone(), v.clone()))
+            .collect::<Vec<String>>());
+
+        let mut all_lines: Vec<String> = Vec::new();
+        all_lines.append(&mut vec![line1]);
+        all_lines.extend((*entry_strs).clone());
+        all_lines.append(&mut vec![last_line]);
+        let result_str = all_lines.join("\n");
+
+        write!(f, "{}", format!("{}", result_str))
+    }
 }
 
 pub enum MessageType {
@@ -243,10 +278,10 @@ mod tests {
                     PatternPart::TEXTPART(TextPart{ text: String::from("No items selected.") }),
                 ],
             },
-            ph_vals: ph_vals1,
+            ph_vals: ph_vals1.clone(),
         };
         let msg2 = SingleMessage {
-            id: String::from("msg1"),
+            id: String::from("msg2"),
             locale: String::from("en"),
             pattern: MessagePattern{ 
                 parts: vec![
@@ -258,10 +293,10 @@ mod tests {
                     PatternPart::TEXTPART(TextPart{ text: String::from(" item selected.") }),
                 ],
             },
-            ph_vals: ph_vals2,
+            ph_vals: ph_vals2.clone(),
         };
         let msg3 = SingleMessage {
-            id: String::from("msg2"),
+            id: String::from("msg3"),
             locale: String::from("en"),
             pattern: MessagePattern{ 
                 parts: vec![
@@ -273,27 +308,28 @@ mod tests {
                     PatternPart::TEXTPART(TextPart{ text: String::from(" items selected.") }),
                 ],
             },
-            ph_vals: ph_vals3,
+            ph_vals: ph_vals3.clone(),
         };
 
-        let msgs = vec![msg1, msg2, msg3];
+        let msg_grp_key_1 = ph_vals1.clone();
+        let msg_grp_key_2 = ph_vals2.clone();
+        let msg_grp_key_3 = ph_vals3.clone();
 
+        let mut messages: HashMap<PHValsMap, SingleMessage> = HashMap::new();
+        messages.insert(msg_grp_key_1, msg1);
+        messages.insert(msg_grp_key_2, msg2);
+        messages.insert(msg_grp_key_3, msg3);
 
-        println!("msg1: {}", &msgs[0]);
-        println!("msg2: {}", &msgs[1]);
-        println!("msg3: {}", &msgs[2]);
+        println!("msg1: {}", &messages.get(&ph_vals1).unwrap());
+        println!("msg2: {}", &messages.get(&ph_vals2).unwrap());
+        println!("msg3: {}", &messages.get(&ph_vals3).unwrap());
 
-        // let msg_ids: Vec<String> =
-        //     msgs.iter().map(|&m| m.id.clone()).collect();
+        let msg_grp = MessageGroup {
+            id: String::from("msg_grp"),
+            messages,
+        };
 
-        // let msg_ph_vals_vec: Vec<PHValsMap> = 
-        //     msgs.iter().map(|&m| m.ph_vals.clone()).collect();
-
-        // let mut msgs_grp_map: HashMap<PHValsMap, SingleMessage> = HashMap::new();
-        // for msg in msgs {
-        //     let ph_vals = &msg.ph_vals.clone();
-        //     msgs_grp_map.insert(ph_vals, msg);
-        // }
-        
+        println!("msg_grp =");
+        println!("{}", msg_grp);
     }
 }
