@@ -52,7 +52,7 @@ pub fn ph_type_attrs_map() -> HashMap<PlaceholderType, PHTypeAttributes> {
     m
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Placeholder {
     // id & name for PH, used for val interpolation in the formatted string.
     // Let the user decide whether this should be unique or shared
@@ -88,11 +88,11 @@ impl fmt::Display for Placeholder {
 }
 
 // PHValsMap indicates how to uniquely select a message,
-// while still being extensible to include runtime values
+// and it can also be used to hold the runtime values needed during
 // during the formatting phase.
 #[derive(Clone, Eq, Debug)] // impl for Hash and PartialEq below
 pub struct PHValsMap {
-    map: HashMap<String, String>, // type of value should prob be Any
+    map: HashMap<String, String>, // TODO: type of value should prob be Any
 }
 
 impl PHValsMap {
@@ -134,7 +134,7 @@ impl fmt::Display for PHValsMap {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TextPart {
     text: String,
 }
@@ -145,7 +145,7 @@ impl fmt::Display for TextPart {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PatternPart {
     TEXTPART(TextPart),
     PLACEHOLDER(Placeholder),
@@ -249,6 +249,23 @@ impl FmtMsg for SingleMessage {
     }
 }
 
+fn phs_in_msg(msg_group: &SingleMessage) -> HashMap<String,Placeholder> {
+    let mut result = HashMap::new();
+    let base_message = &msg_group.msg_base;
+    for part in &base_message.pattern.parts {
+        match part {
+            PatternPart::TEXTPART(text_part) => {},
+            PatternPart::PLACEHOLDER(placeholder) => {
+                let ph_name = &placeholder.id;
+                if !&result.contains_key(ph_name) {
+                    result.insert(ph_name.clone(), placeholder.clone());
+                }
+            }
+        }
+    }
+    result
+}
+
 pub struct MessageGroup {
     id: String,
     messages: HashMap<PHValsMap, MessageBase>,
@@ -305,6 +322,9 @@ pub struct TextUnit {
 mod tests {
     use super::*;
 
+    // Test the hash fn and equality overrides for the HashMap
+    // in `PHValsMap`, which cares about the entire contents of the map (keys
+    // and vals).
     #[test]
     fn test_ph_vals_map_hasheq() {
         let mut map1 = HashMap::new();
@@ -344,6 +364,9 @@ mod tests {
         assert_ne!(&ph_vals3, &ph_vals4);
     }
 
+    // Test the ability to create all constituent parts of a `SingleMessage`
+    // and `MessageGroup`.  Also test the default string conversion fn impls
+    // for the `Display` trait.
     #[test]
     fn test_construct_message() {
         // create `PHValsMap`s for selecting specific messages and holding
@@ -452,8 +475,10 @@ mod tests {
         println!("{}", msg_grp);
     }
 
+    // Test the `fmt_str` method from the `MsgFmt` trait, on the `MessageBase`
+    // struct.
     #[test]
-    fn fmt_str_message_base() {
+    fn test_fmt_str_message_base() {
         let select_ph_vals2 = PHValsMap{ map: {
             let mut m = HashMap::default();
             m.insert(String::from("COUNT"), String::from("ONE"));
@@ -477,15 +502,16 @@ mod tests {
                 ],
             },
             act_ph_vals: PHValsMap::new(),
-            // act_ph_vals: interpolate_ph_vals2.clone(),
         };
 
         assert_eq!("[{COUNT} item selected.]", format!("{}", msg_base2));
         assert_eq!("1 item selected.", msg_base2.fmt_str(&interpolate_ph_vals2));
     }
 
+    // Test the `fmt_str` method from the `MsgFmt` trait, on the
+    // `SingleMessage` struct.
     #[test]
-    fn fmt_str_single_message() {
+    fn test_fmt_str_single_message() {
         let select_ph_vals2 = PHValsMap{ map: {
             let mut m = HashMap::default();
             m.insert(String::from("COUNT"), String::from("ONE"));
@@ -523,8 +549,10 @@ mod tests {
         assert_eq!("1 item selected.", msg2.fmt_str(&interpolate_ph_vals2));
     }
 
+    // Test the `fmt_str` method from the `MsgFmt` trait, on the
+    // `MessageGroup` struct.
     #[test]
-    fn fmt_str_message_group() {
+    fn test_fmt_str_message_group() {
         // create `PHValsMap`s for selecting specific messages and holding
         // onto runtime PH values to interpolate during the formatting phase.
         // These are the keys in a `MessageGroup` map.
@@ -602,5 +630,47 @@ mod tests {
         // let act_ph_vals1: PHValsMap = PHValsMap::new();
         // println!("interpolation of {} yields: {}", &act_ph_vals1,
         //     msg_grp.fmt_str(&act_ph_vals1));
+    }
+
+    #[test]
+    fn test_phs_in_msg() {
+        let ph_name = String::from("COUNT");
+        let ph = Placeholder {
+            id: ph_name.clone(),
+            ph_type: PlaceholderType::PLURAL,
+            default_text_val: Option::None,
+         };
+        let msg_base2 = MessageBase {
+            pattern: MessagePattern{
+                parts: vec![
+                    PatternPart::PLACEHOLDER(ph.clone()),
+                    PatternPart::TEXTPART(TextPart{ text: String::from(" item selected.") }),
+                ],
+            },
+            act_ph_vals: PHValsMap { map: HashMap::default() },
+        };
+
+        let msg2 = SingleMessage {
+            id: String::from("msg2"),
+            locale: String::from("en"),
+            msg_base: msg_base2.clone(),
+        };
+
+        // get actual
+        let act_msg2_phs = phs_in_msg(&msg2);
+
+        // construct expected
+        let mut exp_msg2_phs: HashMap<String,Placeholder> = HashMap::new();
+        exp_msg2_phs.insert(ph_name.clone(), ph.clone());
+
+        // assert equal
+        let act_msg2_phs_names = &act_msg2_phs.keys().collect::<Vec<&String>>();
+        let exp_msg2_phs_names = &exp_msg2_phs.keys().collect::<Vec<&String>>();
+        assert_eq!(act_msg2_phs_names, exp_msg2_phs_names);
+        for k in act_msg2_phs.keys() {
+            let x = act_msg2_phs.get(k).unwrap();
+            let y = exp_msg2_phs.get(k).unwrap();
+            assert_eq!(*x, *y);
+        }
     }
 }
