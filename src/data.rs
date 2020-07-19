@@ -275,6 +275,17 @@ impl fmt::Display for MessageGroup {
     }
 }
 
+// TODO: implement
+// fn is_selectable(act_ph_vals: &PHValsMap, selector_ph_vals: &PHValsMap) -> bool {
+//     true
+// }
+
+// TODO: implement
+// impl FmtMsg for MessageGroup {
+//     fn fmt(&self, act_ph_vals: &PHValsMap) -> String {
+//     }
+// }
+
 pub enum MessageType {
     SINGLE(SingleMessage),
     GROUP(MessageGroup)
@@ -510,5 +521,86 @@ mod tests {
         assert_eq!("{COUNT} item selected.", msg_base2.fmt_str(&empty_ph_vals));
         assert_eq!("1 item selected.", msg_base2.fmt_str(&interpolate_ph_vals2));
         assert_eq!("1 item selected.", msg2.fmt_str(&interpolate_ph_vals2));
+    }
+
+    #[test]
+    fn fmt_str_message_group() {
+        // create `PHValsMap`s for selecting specific messages and holding
+        // onto runtime PH values to interpolate during the formatting phase.
+        // These are the keys in a `MessageGroup` map.
+        let ph_vals1 = PHValsMap{ map: {
+            let mut m = HashMap::default();
+            m.insert(String::from("COUNT"), String::from("=0"));
+            m
+        }};
+        let ph_vals2 = PHValsMap{ map: {
+            let mut m = HashMap::default();
+            m.insert(String::from("COUNT"), String::from("ONE"));
+            m
+        }};
+        let ph_vals3 = PHValsMap{ map: {
+            let mut m = HashMap::default();
+            m.insert(String::from("COUNT"), String::from("OTHER"));
+            m
+        }};
+
+        // create `MessageBase`s for the vals in a `MessageGroup` map.
+        let msg_base1 = MessageBase {
+            pattern: MessagePattern{ 
+                parts: vec![
+                    PatternPart::TEXTPART(TextPart{ text: String::from("No items selected.") }),
+                ],
+            },
+            act_ph_vals: PHValsMap::new(),
+        };
+        let msg_base2 = MessageBase {
+            pattern: MessagePattern{ 
+                parts: vec![
+                    PatternPart::PLACEHOLDER(Placeholder{
+                        id: String::from("COUNT"),
+                        ph_type: PlaceholderType::PLURAL,
+                        default_text_val: Option::None,
+                     }),
+                    PatternPart::TEXTPART(TextPart{ text: String::from(" item selected.") }),
+                ],
+            },
+            act_ph_vals: PHValsMap::new(),
+        };
+        let msg_base3 = MessageBase {
+            pattern: MessagePattern{ 
+                parts: vec![
+                    PatternPart::PLACEHOLDER(Placeholder{
+                        id: String::from("COUNT"),
+                        ph_type: PlaceholderType::PLURAL,
+                        default_text_val: Option::None,
+                     }),
+                    PatternPart::TEXTPART(TextPart{ text: String::from(" items selected.") }),
+                ],
+            },
+            act_ph_vals: PHValsMap::new(),
+        };
+
+        // Construct the `MessageGroup`
+
+        let msg_grp_key_1 = ph_vals1.clone();
+        let msg_grp_key_2 = ph_vals2.clone();
+        let msg_grp_key_3 = ph_vals3.clone();
+
+        let mut messages: HashMap<PHValsMap, MessageBase> = HashMap::new();
+        messages.insert(msg_grp_key_1, msg_base1.clone());
+        messages.insert(msg_grp_key_2, msg_base2.clone());
+        messages.insert(msg_grp_key_3, msg_base3.clone());
+
+        let msg_grp = MessageGroup {
+            id: String::from("msg_grp"),
+            messages,
+        };
+
+        // Create and test various examples of the actual PH vals known at runtime.
+
+        // TODO: implement
+        // let act_ph_vals1: PHValsMap = PHValsMap::new();
+        // println!("interpolation of {} yields: {}", &act_ph_vals1,
+        //     msg_grp.fmt_str(&act_ph_vals1));
     }
 }
