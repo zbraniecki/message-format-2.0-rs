@@ -15,15 +15,15 @@ pub fn main() {
     // 2 zaznaczone
     // 5 zaznaczonych
     let _pl = Message(MessageValue::Multi {
-        selector: InlineExpression::FunctionReference {
+        selector: vec![InlineExpression::FunctionReference {
             id: Identifier("PLURAL".into()),
             arguments: vec![InlineExpression::VariableReference(Identifier(
                 "itemsCount".into(),
             ))],
-        },
+        }],
         variants: vec![
             Variant {
-                key: VariantKey::StringLiteral("one".into()),
+                key: vec![VariantKey::StringLiteral("one".into())],
                 value: Pattern(vec![
                     PatternElement::Placeholder(InlineExpression::VariableReference(Identifier(
                         "itemsCount".into(),
@@ -32,7 +32,7 @@ pub fn main() {
                 ]),
             },
             Variant {
-                key: VariantKey::StringLiteral("few".into()),
+                key: vec![VariantKey::StringLiteral("few".into())],
                 value: Pattern(vec![
                     PatternElement::Placeholder(InlineExpression::VariableReference(Identifier(
                         "itemsCount".into(),
@@ -41,7 +41,16 @@ pub fn main() {
                 ]),
             },
             Variant {
-                key: VariantKey::StringLiteral("other".into()),
+                key: vec![VariantKey::StringLiteral("manny".into())],
+                value: Pattern(vec![
+                    PatternElement::Placeholder(InlineExpression::VariableReference(Identifier(
+                        "itemsCount".into(),
+                    ))),
+                    PatternElement::Text(" zaznaczone".into()),
+                ]),
+            },
+            Variant {
+                key: vec![VariantKey::StringLiteral("other".into())],
                 value: Pattern(vec![
                     PatternElement::Placeholder(InlineExpression::VariableReference(Identifier(
                         "itemsCount".into(),

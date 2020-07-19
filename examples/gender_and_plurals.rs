@@ -21,15 +21,15 @@ pub fn main() {
     // Anne i Mary opublikowały post w grupie Birthday Party
     // John i Mark opublikowali post w grupie Birthday Party
     let _pl = Message(MessageValue::Multi {
-        selector: InlineExpression::FunctionReference {
+        selector: vec![InlineExpression::FunctionReference {
             id: Identifier("GENDER".into()),
             arguments: vec![InlineExpression::VariableReference(Identifier(
                 "usersGender".into(),
             ))],
-        },
+        }],
         variants: vec![
             Variant {
-                key: VariantKey::StringLiteral("masculine-personal".into()),
+                key: vec![VariantKey::StringLiteral("masculine-personal".into())],
                 value: Pattern(vec![
                     PatternElement::Placeholder(InlineExpression::VariableReference(Identifier(
                         "userName".into(),
@@ -41,7 +41,7 @@ pub fn main() {
                 ]),
             },
             Variant {
-                key: VariantKey::StringLiteral("non-masculine-personal".into()),
+                key: vec![VariantKey::StringLiteral("non-masculine-personal".into())],
                 value: Pattern(vec![
                     PatternElement::Placeholder(InlineExpression::VariableReference(Identifier(
                         "userName".into(),

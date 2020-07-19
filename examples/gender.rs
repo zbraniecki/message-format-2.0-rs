@@ -16,10 +16,10 @@ pub fn main() {
     // Anne opublikowała post w grupie Birthday Party
     // John opublikował post w grupie Birthday Party
     let _pl = Message(MessageValue::Multi {
-        selector: InlineExpression::VariableReference(Identifier("userGender".into())),
+        selector: vec![InlineExpression::VariableReference(Identifier("userGender".into()))],
         variants: vec![
             Variant {
-                key: VariantKey::StringLiteral("feminine".into()),
+                key: vec![VariantKey::StringLiteral("feminine".into())],
                 value: Pattern(vec![
                     PatternElement::Placeholder(InlineExpression::VariableReference(Identifier(
                         "userName".into(),
@@ -31,12 +31,24 @@ pub fn main() {
                 ]),
             },
             Variant {
-                key: VariantKey::StringLiteral("masculine".into()),
+                key: vec![VariantKey::StringLiteral("masculine".into())],
                 value: Pattern(vec![
                     PatternElement::Placeholder(InlineExpression::VariableReference(Identifier(
                         "userName".into(),
                     ))),
                     PatternElement::Text(" opublikował post w grupie ".into()),
+                    PatternElement::Placeholder(InlineExpression::VariableReference(Identifier(
+                        "groupName".into(),
+                    ))),
+                ]),
+            },
+            Variant {
+                key: vec![VariantKey::StringLiteral("neuter".into())],
+                value: Pattern(vec![
+                    PatternElement::Placeholder(InlineExpression::VariableReference(Identifier(
+                        "userName".into(),
+                    ))),
+                    PatternElement::Text(" opublikowało post w grupie ".into()),
                     PatternElement::Placeholder(InlineExpression::VariableReference(Identifier(
                         "groupName".into(),
                     ))),

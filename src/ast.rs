@@ -3,7 +3,7 @@ pub struct Message(pub MessageValue);
 pub enum MessageValue {
     Single(Pattern),
     Multi {
-        selector: InlineExpression,
+        selector: Vec<InlineExpression>,
         variants: Vec<Variant>,
     },
 }
@@ -16,7 +16,7 @@ pub enum PatternElement {
 }
 
 pub struct Variant {
-    pub key: VariantKey,
+    pub key: Vec<VariantKey>,
     pub value: Pattern,
 }
 
