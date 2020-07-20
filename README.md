@@ -7,7 +7,7 @@ Each experiment is kept in a branch against master of this repo, and as we settl
 
 # Experiments
 
-* [Elango's](https://github.com/echeran/message-format-2.0-rs/tree/echeran-initial-work) - based on Protobuf
+* [Elango's](https://github.com/echeran/message-format-2.0-rs/tree/echeran-initial-work) - loosely based on [Okapi](https://bitbucket.org/okapiframework/okapi/src/dev/okapi/core/src/main/java/net/sf/okapi/common/resource/)
 * [Zibi's](https://github.com/zbraniecki/message-format-2.0-rs/tree/ast) - based on [Fluent](https://github.com/projectfluent/fluent-rs)
 
 # Next steps
